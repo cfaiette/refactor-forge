@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
 interface StatusResponse {
@@ -13,6 +14,7 @@ interface StatusResponse {
   template: `
     <div class="status-page">
       <h1>RefactorForge Status</h1>
+      <a routerLink="/" class="nav-link">← Back to dashboard</a>
       <ul class="status-list">
         <li class="status-item frontend">
           <span class="label">Frontend</span>
@@ -43,7 +45,16 @@ interface StatusResponse {
     }
     h1 {
       font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .nav-link {
+      display: inline-block;
       margin-bottom: 1.5rem;
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .nav-link:hover {
+      text-decoration: underline;
     }
     .status-list {
       list-style: none;

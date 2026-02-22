@@ -12,6 +12,11 @@ services:
       - DB_DATABASE=refactor_forge
       - DB_USERNAME=refactor_forge
       - DB_PASSWORD=secret
+      - LLM_URL=http://ollama:11434
+      - LLM_MODEL=deepseek-coder-v2-lite-base-q4_k_m
+      - LLM_ENABLED=true
+      - LLM_CRITIQUE_ENABLED=true
+      - LLM_CHALLENGE_GENERATION_ENABLED=true
     depends_on:
       mysql:
         condition: service_healthy
@@ -33,5 +38,13 @@ services:
       timeout: 5s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
 volumes:
   mysql_data:
+  ollama_data:

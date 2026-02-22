@@ -57,5 +57,11 @@ Project: RefactorForge – refactoring training platform. Laravel API backend, A
 
 - **Backend:** Laravel, PHP 8.3+, MySQL, nikic/php-parser for PHP AST; TypeScript parsing via Node bridge.
 - **Frontend:** Angular SPA consuming Laravel API; Monaco editor for solution code.
-- **Runtime:** Docker Compose (app, mysql, node); source mounted, DB persisted.
+- **Runtime:** Docker Compose (app, mysql, ollama); source mounted, DB persisted.
 - **Evaluation:** Deterministic structural rules first; optional AI critique does not override scores.
+
+---
+
+## Environment and deployment
+
+- **Setup script:** [backend/scripts/deploy.sh](backend/scripts/deploy.sh) is the single entrypoint to prepare the Laravel app after the Docker stack is up (composer install, .env, key:generate, migrate, seed, LLM instructions). When you add or change environment setup steps (new env vars, migrations, seeders, cache/config steps, or LLM/Ollama steps), update this script so it stays the single source of truth for “environment ready to use.”

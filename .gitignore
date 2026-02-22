@@ -1,0 +1,38 @@
+.cursor/plans
+
+# Laravel
+/vendor
+vendor
+node_modules
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+.phpunit.cache
+Homestead.json
+Homestead.yaml
+auth.json
+*.log
+
+# Laravel / frontend build
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+
+# Angular
+dist
+.angular
+.sass-cache
+connect.lock
+coverage
+libpeerconnection.log
+testem.log
+typings
+*.tsbuildinfo
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
