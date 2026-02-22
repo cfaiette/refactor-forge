@@ -1,0 +1,61 @@
+# RefactorForge – Cursor rules
+
+Project: RefactorForge – refactoring training platform. Laravel API backend, Angular SPA frontend, Docker (LAMP), MySQL. DDD-style layers: Domain, Application, Infrastructure, Presentation. Evaluation engine uses AST (PHP + TypeScript) and a rule engine. See refactor_forge_architecture.md for full architecture.
+
+---
+
+## General (from awesome-cursorrules – code guidelines)
+
+- Verify information before presenting it; do not assume or speculate without evidence.
+- Make changes file by file so mistakes can be spotted.
+- Do not apologize, summarize changes, or ask for confirmation of information already in context.
+- Preserve existing code and structures; do not remove unrelated functionality.
+- Provide edits in a single chunk per file; no multi-step instructions for the same file.
+- Do not suggest updates when no actual modifications are needed.
+- Use descriptive, explicit variable names.
+- Follow the existing coding style in the project.
+- Consider performance, security, and edge cases; avoid magic numbers; prefer named constants.
+- Implement robust error handling and logging where appropriate.
+- Prefer modular design for maintainability and reusability.
+- Ensure compatibility with the project’s language and framework versions.
+- Include or suggest appropriate unit tests for new or modified code.
+- Use assertions where they help validate assumptions.
+
+---
+
+## Backend – Laravel (PHP 8.3+, API-first)
+
+- Use PHP 8.3+ features where appropriate.
+- Follow Laravel conventions and best practices; prefer helpers over facades when it improves clarity.
+- Focus on type safety, clear docblocks, and good developer experience.
+- **Naming:** File names kebab-case (e.g. `evaluate-attempt-handler.php`). Classes and enums PascalCase. Methods and function names camelCase. Variables and properties snake_case. Constants and enum cases SCREAMING_SNAKE_CASE.
+- **Structure:** Respect layered architecture: Domain (pure logic, no framework), Application (use-case orchestration), Infrastructure (framework, AST, DB, external), Presentation (API controllers only). No domain logic in controllers.
+- **API:** Controllers map HTTP to Application use-cases only. Keep controllers thin.
+- **Testing:** PHP unit tests must start with `test_` so PHP can auto-discover them. Prefer feature tests for HTTP and use-cases where appropriate.
+
+---
+
+## Frontend – Angular (TypeScript)
+
+- Write clear, readable Angular/TypeScript code; include required imports and use consistent naming for components, services, and modules.
+- Prefer at most 2 levels of nesting; keep functions to a reasonable size (e.g. 50 or fewer executable lines) and at most 4 parameters; keep lines within ~80 characters where practical.
+- Obey project config: `.eslintrc.json`, `.prettierrc`, `.htmlhintrc`, `.editorconfig` if present.
+- When refactoring, preserve existing JSDoc comments.
+- Be concise; if something is unknown, say so instead of inventing.
+
+---
+
+## Code quality and testing (project rules)
+
+- Prefer easily testable, functional code.
+- Avoid comments inside code blocks; code should be self-explanatory. Comments for method/parameter descriptions are fine.
+- When creating new unit tests, name them so they start with `test_` for PHP auto-discovery.
+
+---
+
+## Stack reminders
+
+- **Backend:** Laravel, PHP 8.3+, MySQL, nikic/php-parser for PHP AST; TypeScript parsing via Node bridge.
+- **Frontend:** Angular SPA consuming Laravel API; Monaco editor for solution code.
+- **Runtime:** Docker Compose (app, mysql, node); source mounted, DB persisted.
+- **Evaluation:** Deterministic structural rules first; optional AI critique does not override scores.
