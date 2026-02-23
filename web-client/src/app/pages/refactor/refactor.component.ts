@@ -16,7 +16,7 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
       <header class="refactor-header">
         <a routerLink="/challenges" class="back-link">← Challenges</a>
         @if (challenge()) {
-          <h1>{{ challenge()!.title }}</h1>
+          <h1>{{ displayTitle() }}</h1>
         }
       </header>
       @if (loadError()) {
@@ -46,17 +46,35 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
           </div>
         </div>
         <div class="actions">
-          <button class="submit-btn" (click)="submit()" [disabled]="submitting()">
-            {{ submitting() ? 'Submitting…' : 'Submit' }}
-          </button>
-          <button
-            class="reveal-btn"
-            (click)="revealPattern()"
-            [disabled]="revealLoading() || !!revealedPattern()"
-          >
-            {{ revealLoading() ? 'Loading…' : revealedPattern() ? 'Pattern revealed' : 'Reveal pattern' }}
-          </button>
+          <div class="actions-left">
+            <button class="generate-btn" (click)="generateExample()" [disabled]="generatingExample() || submitting()">
+              {{ generatingExample() ? 'Generating…' : 'Regenerate Example' }}
+            </button>
+          </div>
+          <div class="actions-right">
+            <button class="hint-btn" (click)="toggleHint()">
+              {{ showHint() ? 'Hide hint' : 'Hint' }}
+            </button>
+            <button
+              class="reveal-btn"
+              (click)="revealPattern()"
+              [disabled]="revealLoading() || !!revealedPattern()"
+            >
+              {{ revealLoading() ? 'Loading…' : revealedPattern() ? 'Pattern revealed' : 'Reveal pattern' }}
+            </button>
+            <button class="submit-btn submit-btn-right" (click)="submit()" [disabled]="submitting()">
+              {{ submitting() ? 'Submitting…' : 'Submit' }}
+            </button>
+          </div>
         </div>
+        @if (showHint()) {
+          <div class="hint-panel">
+            {{ currentHint() }}
+          </div>
+        }
+        @if (generateError()) {
+          <p class="error-detail">{{ generateError() }}</p>
+        }
         @if (revealedPattern(); as pattern) {
           <div class="reveal-panel">
             <h2>{{ pattern.name }}</h2>
@@ -144,6 +162,25 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
     }
     .actions {
       margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .actions-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .actions-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      flex: 1;
     }
     .submit-btn {
       padding: 0.5rem 1.25rem;
@@ -160,6 +197,71 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
     .submit-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+    .submit-btn-right {
+      margin-left: auto;
+    }
+    .generate-btn {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      font-size: 0.95rem;
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .generate-btn:hover:not(:disabled) {
+      background: #ececec;
+    }
+    .generate-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .hint-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .hint-btn:hover {
+      background: #ececec;
+    }
+    .reveal-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .reveal-btn:hover:not(:disabled) {
+      background: #ececec;
+    }
+    .reveal-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .hint-panel {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      background: #fff8e8;
+      border: 1px solid #f0d79a;
+      border-radius: 8px;
+      color: #5f4708;
+      font-size: 0.95rem;
+    }
+    @media (max-width: 768px) {
+      .actions {
+        align-items: flex-start;
+      }
+      .actions-right {
+        justify-content: flex-start;
+      }
     }
     .results-panel {
       margin-top: 1.5rem;
@@ -195,11 +297,16 @@ export class RefactorComponent {
   result = signal<{ score: number; feedback: string } | null>(null);
   revealedPattern = signal<PatternReveal | null>(null);
   revealLoading = signal(false);
+  generatingExample = signal(false);
+  generateError = signal<string | null>(null);
+  showHint = signal(false);
+  isMysteryPattern = signal(this.route.snapshot.queryParamMap.get('mode') === 'random');
 
   private challengeId = computed(() => {
     const id = this.route.snapshot.paramMap.get('id');
     return id ? parseInt(id, 10) : null;
   });
+  displayTitle = computed(() => (this.isMysteryPattern() ? 'Mystery Pattern' : this.challenge()?.title ?? ''));
 
   readOnlyModel = computed(() => {
     const c = this.challenge();
@@ -237,12 +344,15 @@ export class RefactorComponent {
 
   constructor() {
     this.loadChallenge();
-    inject(ActivatedRoute).paramMap.subscribe((paramMap) => {
+    this.route.paramMap.subscribe((paramMap) => {
       const idParam = paramMap.get('id');
       const id = idParam ? parseInt(idParam, 10) : null;
       if (id != null && !isNaN(id)) {
         this.loadChallengeForId(id);
       }
+    });
+    this.route.queryParamMap.subscribe((queryParamMap) => {
+      this.isMysteryPattern.set(queryParamMap.get('mode') === 'random');
     });
   }
 
@@ -259,6 +369,7 @@ export class RefactorComponent {
   private loadChallengeForId(id: number): void {
     this.loading.set(true);
     this.loadError.set(null);
+    this.generateError.set(null);
     this.challenge.set(null);
     this.result.set(null);
     this.revealedPattern.set(null);
@@ -272,6 +383,33 @@ export class RefactorComponent {
         this.loading.set(false);
         const msg = (err?.error as { message?: string })?.message ?? err?.message ?? 'Failed to load challenge';
         this.loadError.set(msg);
+      },
+    });
+  }
+
+  generateExample(): void {
+    const c = this.challenge();
+    if (!c) return;
+    this.generatingExample.set(true);
+    this.generateError.set(null);
+    this.challengesService.generateVariation(c.expected_pattern, c.language, c.difficulty).subscribe({
+      next: (generated) => {
+        this.challenge.set({
+          ...c,
+          title: generated.title,
+          messy_code: generated.messy_code,
+          language: generated.language,
+          expected_pattern: generated.pattern_name,
+        });
+        this.solutionCode = generated.messy_code;
+        this.result.set(null);
+        this.revealedPattern.set(null);
+        this.generatingExample.set(false);
+      },
+      error: (err) => {
+        this.generatingExample.set(false);
+        const msg = (err?.error as { message?: string })?.message ?? err?.message ?? 'Example generation failed';
+        this.generateError.set(msg);
       },
     });
   }
@@ -308,5 +446,24 @@ export class RefactorComponent {
         this.revealLoading.set(false);
       },
     });
+  }
+
+  toggleHint(): void {
+    this.showHint.update((v) => !v);
+  }
+
+  currentHint(): string {
+    const c = this.challenge();
+    const pattern = c?.expected_pattern?.toLowerCase() ?? '';
+    if (pattern.includes('strategy')) {
+      return 'Look for conditional branches selecting behavior. Replace branch selection with interchangeable classes that share one interface.';
+    }
+    if (pattern.includes('factory')) {
+      return 'If object creation is spread across conditionals, centralize construction behind a dedicated creator/factory.';
+    }
+    if (pattern.includes('observer')) {
+      return 'Find direct dependencies between event producer and consumers. Consider publish/subscribe to decouple updates.';
+    }
+    return 'Identify the most repeated decision logic, then separate varying behavior behind a common interface.';
   }
 }

@@ -16,6 +16,13 @@ export interface Challenge {
   difficulty: string;
 }
 
+export interface GeneratedChallengeVariation {
+  title: string;
+  messy_code: string;
+  language: string;
+  pattern_name: string;
+}
+
 export interface AttemptResult {
   score: number;
   feedback: string;

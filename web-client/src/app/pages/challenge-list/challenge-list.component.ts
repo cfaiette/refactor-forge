@@ -11,71 +11,56 @@ import type { ChallengeListItem, PatternListItem } from '../../models/api.types'
   template: `
     <div class="challenge-list-page">
       <h1>Challenges</h1>
-      <p class="subtitle">Choose a pattern to implement</p>
+      <p class="subtitle">Pick your path: jump into a random challenge or choose a sample challenge.</p>
       @if (loading()) {
         <p class="loading">Loading challenges…</p>
       } @else if (error()) {
         <p class="error-detail">{{ error() }}</p>
         <a routerLink="/status" class="status-hint">Check system status</a>
-      } @else if (challenges().length === 0) {
-        <div class="empty-state">
-          <p class="empty-message">No challenges yet.</p>
-          <p class="empty-hint">Create a challenge by choosing a design pattern.</p>
-          @if (!showPatternPicker()) {
-            <button type="button" class="create-btn" (click)="openPatternPicker()">
-              Create challenge
-            </button>
-          } @else {
-            <div class="pattern-picker">
-              <p class="picker-label">Select a pattern</p>
-              @if (patternsLoading()) {
-                <p class="loading">Loading patterns…</p>
-              } @else if (patternsError()) {
-                <p class="error-detail">{{ patternsError() }}</p>
-                <p class="error-hint">Ensure the backend is running and the patterns API is available (GET /api/patterns).</p>
-              } @else if (patterns().length === 0) {
-                <p class="empty-patterns-message">No patterns available.</p>
-                <p class="empty-patterns-hint">Seed the backend database to add design patterns. In the backend directory run: <code>php artisan db:seed</code></p>
-              } @else {
-                <ul class="pattern-list">
-                  @for (pattern of patterns(); track pattern.id) {
-                    <li class="pattern-item">
-                      <button
-                        type="button"
-                        class="pattern-btn"
-                        (click)="createChallenge(pattern)"
-                        [disabled]="creating()"
-                      >
-                        {{ pattern.name }}
-                        @if (creating()) {
-                          <span class="creating-label">Creating…</span>
-                        }
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
-              <button type="button" class="cancel-btn" (click)="showPatternPicker.set(false)">
-                Cancel
-              </button>
-            </div>
-          }
-        </div>
       } @else {
-        <ul class="challenge-list">
-          @for (challenge of challenges(); track challenge.id) {
-            <li class="challenge-item">
-              <a [routerLink]="['/challenges', challenge.id]" class="challenge-link">
-                <span class="challenge-title">{{ challenge.title }}</span>
-                <span class="challenge-meta">
-                  {{ challenge.expected_pattern }} · {{ challenge.difficulty }}
-                </span>
-              </a>
-            </li>
-          }
-        </ul>
+        <div class="path-grid">
+          <section class="path-card">
+            <h2>Random challenge</h2>
+            <p class="path-copy">Start immediately with a random challenge from the current set.</p>
+            <button
+              type="button"
+              class="primary-btn"
+              (click)="startRandomChallenge()"
+              [disabled]="challenges().length === 0"
+            >
+              Start random challenge
+            </button>
+            @if (challenges().length === 0) {
+              <p class="card-note">No challenges available yet. Create one first.</p>
+            }
+          </section>
+          <section class="path-card">
+            <h2>Sample challenge</h2>
+            <p class="path-copy">Pick a specific challenge from the list and open it directly.</p>
+            @if (challenges().length === 0) {
+              <p class="card-note">No sample challenges yet.</p>
+            } @else {
+              <label class="sample-label" for="sample-challenge-select">Available challenges</label>
+              <select
+                id="sample-challenge-select"
+                class="sample-select"
+                [value]="selectedChallengeId() ?? ''"
+                (change)="onSampleSelected($event)"
+              >
+                @for (challenge of challenges(); track challenge.id) {
+                  <option [value]="challenge.id">
+                    {{ challenge.title }} ({{ challenge.expected_pattern }} · {{ challenge.difficulty }})
+                  </option>
+                }
+              </select>
+              <button type="button" class="secondary-btn" (click)="openSelectedChallenge()">
+                Open sample challenge
+              </button>
+            }
+          </section>
+        </div>
         <div class="create-section">
-          <button type="button" class="create-btn create-btn-secondary" (click)="openPatternPicker()">
+          <button type="button" class="create-btn" (click)="openPatternPicker()">
             Create challenge
           </button>
         </div>
@@ -123,7 +108,7 @@ import type { ChallengeListItem, PatternListItem } from '../../models/api.types'
   styles: [`
     .challenge-list-page {
       font-family: system-ui, sans-serif;
-      max-width: 560px;
+      max-width: 980px;
       margin: 3rem auto;
       padding: 1.5rem;
     }
@@ -151,22 +136,35 @@ import type { ChallengeListItem, PatternListItem } from '../../models/api.types'
     .status-hint:hover {
       text-decoration: underline;
     }
-    .empty-state {
-      padding: 2rem 0;
-      text-align: center;
+    .path-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
     }
-    .empty-message {
-      font-weight: 500;
-      margin: 0 0 0.25rem 0;
+    .path-card {
+      background: #f8f9fb;
+      border: 1px solid #e6e9ef;
+      border-radius: 10px;
+      padding: 1.1rem;
+      min-height: 220px;
     }
-    .empty-hint {
+    .path-card h2 {
+      font-size: 1.1rem;
+      margin: 0 0 0.5rem 0;
+    }
+    .path-copy {
+      color: #555;
+      margin: 0 0 1rem 0;
+      font-size: 0.95rem;
+    }
+    .card-note {
+      margin-top: 0.75rem;
       color: #666;
-      font-size: 0.9375rem;
-      margin: 0 0 1.25rem 0;
+      font-size: 0.875rem;
     }
     .create-btn {
       padding: 0.625rem 1.25rem;
-      font-size: 1rem;
+      font-size: 0.95rem;
       background: #0066cc;
       color: white;
       border: none;
@@ -176,16 +174,49 @@ import type { ChallengeListItem, PatternListItem } from '../../models/api.types'
     .create-btn:hover {
       background: #0052a3;
     }
+    .primary-btn, .secondary-btn {
+      padding: 0.625rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+    }
+    .primary-btn {
+      background: #0066cc;
+      color: #fff;
+    }
+    .primary-btn:hover:not(:disabled) {
+      background: #0052a3;
+    }
+    .secondary-btn {
+      background: #eef3fa;
+      color: #1f3d5a;
+      border: 1px solid #c8d8ec;
+      margin-top: 0.75rem;
+    }
+    .secondary-btn:hover:not(:disabled) {
+      background: #e1ecf8;
+    }
+    .primary-btn:disabled, .secondary-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .sample-label {
+      display: block;
+      font-size: 0.875rem;
+      margin-bottom: 0.4rem;
+      color: #555;
+    }
+    .sample-select {
+      width: 100%;
+      padding: 0.6rem 0.7rem;
+      border: 1px solid #cfd6e0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.92rem;
+    }
     .create-section {
       margin-top: 1.5rem;
-    }
-    .create-btn-secondary {
-      background: #f5f5f5;
-      color: #333;
-      border: 1px solid #ddd;
-    }
-    .create-btn-secondary:hover {
-      background: #eee;
     }
     .pattern-picker {
       margin-top: 1.5rem;
@@ -260,32 +291,10 @@ import type { ChallengeListItem, PatternListItem } from '../../models/api.types'
       border-radius: 4px;
       font-size: 0.8125rem;
     }
-    .challenge-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .challenge-item {
-      margin-bottom: 0.5rem;
-    }
-    .challenge-link {
-      display: block;
-      padding: 0.75rem 1rem;
-      background: #f5f5f5;
-      border-radius: 8px;
-      text-decoration: none;
-      color: inherit;
-    }
-    .challenge-link:hover {
-      background: #eee;
-    }
-    .challenge-title {
-      font-weight: 500;
-      display: block;
-    }
-    .challenge-meta {
-      font-size: 0.875rem;
-      color: #666;
+    @media (max-width: 850px) {
+      .path-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `],
 })
@@ -303,6 +312,7 @@ export class ChallengeListComponent {
   patternsError = signal<string | null>(null);
   creating = signal(false);
   createError = signal<string | null>(null);
+  selectedChallengeId = signal<number | null>(null);
 
   constructor() {
     this.loadChallenges();
@@ -314,6 +324,12 @@ export class ChallengeListComponent {
     this.challengesService.list().subscribe({
       next: (list) => {
         this.challenges.set(list);
+        const currentSelectedId = this.selectedChallengeId();
+        if (list.length === 0) {
+          this.selectedChallengeId.set(null);
+        } else if (currentSelectedId == null || !list.some((c) => c.id === currentSelectedId)) {
+          this.selectedChallengeId.set(list[0].id);
+        }
         this.loading.set(false);
       },
       error: (err) => {
@@ -346,6 +362,32 @@ export class ChallengeListComponent {
     this.showPatternPicker.set(false);
     this.patternsError.set(null);
     this.createError.set(null);
+  }
+
+  startRandomChallenge(): void {
+    const list = this.challenges();
+    if (list.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * list.length);
+    this.router.navigate(['/challenges', list[randomIndex].id], {
+      queryParams: { mode: 'random' },
+    });
+  }
+
+  onSampleSelected(event: Event): void {
+    const target = event.target as HTMLSelectElement | null;
+    if (!target) return;
+    const id = Number(target.value);
+    if (!Number.isNaN(id)) {
+      this.selectedChallengeId.set(id);
+    }
+  }
+
+  openSelectedChallenge(): void {
+    const id = this.selectedChallengeId();
+    if (id == null) return;
+    this.router.navigate(['/challenges', id], {
+      queryParams: {},
+    });
   }
 
   createChallenge(pattern: PatternListItem): void {

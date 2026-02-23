@@ -12,8 +12,8 @@ services:
       - DB_DATABASE=refactor_forge
       - DB_USERNAME=refactor_forge
       - DB_PASSWORD=secret
-      - LLM_URL=http://ollama:11434
-      - LLM_MODEL=deepseek-coder-v2-lite-base-q4_k_m
+      - LLM_URL=http://host.docker.internal:11434
+      - LLM_MODEL=llama3.2:latest
       - LLM_ENABLED=true
       - LLM_CRITIQUE_ENABLED=true
       - LLM_CHALLENGE_GENERATION_ENABLED=true
