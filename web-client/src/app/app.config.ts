@@ -9,6 +9,6 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(),
-    provideMonacoEditor({ baseUrl: 'assets/monaco' }),
+    provideMonacoEditor({ baseUrl: 'assets/monaco/min/vs' }),
   ],
 };
