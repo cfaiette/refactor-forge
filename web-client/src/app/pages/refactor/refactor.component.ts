@@ -35,14 +35,57 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
             </div>
           </div>
           <div class="editor-pane">
-            <label class="pane-label">Your solution</label>
-            <div class="monaco-wrapper">
-              <ngx-monaco-editor
-                [options]="editableOptions()"
-                [model]="editableModel"
-                [(ngModel)]="solutionCode"
-              />
+            <div class="pane-tabs">
+              <button
+                type="button"
+                class="pane-tab"
+                [class.active]="activeRightTab() === 'solution'"
+                (click)="setRightTab('solution')"
+              >
+                Your solution
+              </button>
+              <button
+                type="button"
+                class="pane-tab"
+                [class.active]="activeRightTab() === 'revealed'"
+                (click)="setRightTab('revealed')"
+                [disabled]="!revealedPattern() && !revealLoading()"
+              >
+                Revealed solution
+              </button>
             </div>
+            @if (activeRightTab() === 'solution') {
+              <div class="monaco-wrapper">
+                <ngx-monaco-editor
+                  [options]="editableOptions()"
+                  [model]="editableModel"
+                  [(ngModel)]="solutionCode"
+                />
+              </div>
+            } @else {
+              @if (revealLoading()) {
+                <div class="monaco-wrapper">
+                  <p class="tab-status">Loading revealed solution…</p>
+                </div>
+              } @else {
+                @if (revealedPattern(); as pattern) {
+                  <div class="monaco-wrapper">
+                    <ngx-monaco-editor
+                      [options]="revealedOptions()"
+                      [model]="revealedModel()"
+                    />
+                  </div>
+                  <div class="revealed-meta revealed-meta-bottom">
+                    <strong>{{ pattern.name }}</strong>
+                    <span>{{ pattern.intent }}</span>
+                  </div>
+                } @else {
+                  <div class="monaco-wrapper">
+                    <p class="tab-status">Click "Reveal pattern" to unlock the revealed solution.</p>
+                  </div>
+                }
+              }
+            }
           </div>
         </div>
         <div class="actions">
@@ -74,17 +117,6 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
         }
         @if (generateError()) {
           <p class="error-detail">{{ generateError() }}</p>
-        }
-        @if (revealedPattern(); as pattern) {
-          <div class="reveal-panel">
-            <h2>{{ pattern.name }}</h2>
-            <p class="reveal-label">Intent</p>
-            <p class="reveal-text">{{ pattern.intent }}</p>
-            <p class="reveal-label">When to use</p>
-            <p class="reveal-text">{{ pattern.when_to_use }}</p>
-            <p class="reveal-label">Example solution</p>
-            <pre class="reveal-code">{{ pattern.example_solution }}</pre>
-          </div>
         }
         @if (result()) {
           <div class="results-panel">
@@ -146,6 +178,35 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
       font-size: 0.875rem;
       font-weight: 500;
       margin: 0;
+    }
+    .pane-tabs {
+      display: flex;
+      gap: 0.4rem;
+      padding: 0.4rem 0.5rem;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+    }
+    .pane-tab {
+      padding: 0.35rem 0.7rem;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      color: #444;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.86rem;
+    }
+    .pane-tab:hover:not(:disabled) {
+      background: #f0f0f0;
+    }
+    .pane-tab.active {
+      background: #e8f1ff;
+      border-color: #b9d2f5;
+      color: #15457d;
+      font-weight: 500;
+    }
+    .pane-tab:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
     .monaco-wrapper {
       flex: 1;
@@ -255,6 +316,30 @@ import type { Challenge, PatternReveal } from '../../models/api.types';
       color: #5f4708;
       font-size: 0.95rem;
     }
+    .tab-status {
+      margin: 0;
+      padding: 1rem;
+      color: #555;
+      font-size: 0.92rem;
+    }
+    .revealed-meta {
+      padding: 0.6rem 0.8rem 0.4rem 0.8rem;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.86rem;
+      color: #555;
+    }
+    .revealed-meta strong {
+      color: #222;
+      font-size: 0.92rem;
+    }
+    .revealed-meta-bottom {
+      border-top: 1px solid #eee;
+      border-bottom: none;
+    }
     @media (max-width: 768px) {
       .actions {
         align-items: flex-start;
@@ -301,6 +386,7 @@ export class RefactorComponent {
   generateError = signal<string | null>(null);
   showHint = signal(false);
   isMysteryPattern = signal(this.route.snapshot.queryParamMap.get('mode') === 'random');
+  activeRightTab = signal<'solution' | 'revealed'>('solution');
 
   private challengeId = computed(() => {
     const id = this.route.snapshot.paramMap.get('id');
@@ -311,7 +397,7 @@ export class RefactorComponent {
   readOnlyModel = computed(() => {
     const c = this.challenge();
     if (!c) return { value: '', language: 'php' };
-    return { value: c.messy_code, language: c.language };
+    return { value: this.prettifyCode(c.messy_code, c.language), language: c.language };
   });
 
   get editableModel(): { value: string; language: string } {
@@ -329,6 +415,7 @@ export class RefactorComponent {
       language: c?.language ?? 'php',
       readOnly: true,
       minimap: { enabled: false },
+      wordWrap: 'on',
     };
   });
 
@@ -341,6 +428,20 @@ export class RefactorComponent {
       minimap: { enabled: false },
     };
   });
+  revealedModel = computed(() => ({
+    value: this.prettifyCode(
+      this.revealedPattern()?.example_solution ?? '',
+      this.challenge()?.language ?? 'php'
+    ),
+    language: this.challenge()?.language ?? 'php',
+  }));
+  revealedOptions = computed(() => ({
+    theme: 'vs',
+    language: this.challenge()?.language ?? 'php',
+    readOnly: true,
+    minimap: { enabled: false },
+    wordWrap: 'on',
+  }));
 
   constructor() {
     this.loadChallenge();
@@ -370,6 +471,7 @@ export class RefactorComponent {
     this.loading.set(true);
     this.loadError.set(null);
     this.generateError.set(null);
+    this.activeRightTab.set('solution');
     this.challenge.set(null);
     this.result.set(null);
     this.revealedPattern.set(null);
@@ -404,6 +506,7 @@ export class RefactorComponent {
         this.solutionCode = generated.messy_code;
         this.result.set(null);
         this.revealedPattern.set(null);
+        this.activeRightTab.set('solution');
         this.generatingExample.set(false);
       },
       error: (err) => {
@@ -440,6 +543,7 @@ export class RefactorComponent {
     this.patternsService.reveal(c.pattern_id).subscribe({
       next: (pattern) => {
         this.revealedPattern.set(pattern);
+        this.activeRightTab.set('revealed');
         this.revealLoading.set(false);
       },
       error: () => {
@@ -450,6 +554,52 @@ export class RefactorComponent {
 
   toggleHint(): void {
     this.showHint.update((v) => !v);
+  }
+
+  setRightTab(tab: 'solution' | 'revealed'): void {
+    this.activeRightTab.set(tab);
+  }
+
+  private prettifyCode(code: string, language: string): string {
+    const normalized = (code ?? '').replace(/\r\n/g, '\n').trim();
+    if (!normalized) return '';
+
+    const lang = (language ?? '').toLowerCase();
+    if (!['php', 'typescript', 'javascript'].includes(lang)) {
+      return normalized;
+    }
+
+    const expanded = normalized
+      .replace(/;\s*/g, ';\n')
+      .replace(/{\s*/g, '{\n')
+      .replace(/}\s*/g, '}\n')
+      .replace(/\n{3,}/g, '\n\n');
+
+    const lines = expanded.split('\n');
+    let indentLevel = 0;
+    const formatted: string[] = [];
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) {
+        if (formatted.length > 0 && formatted[formatted.length - 1] !== '') {
+          formatted.push('');
+        }
+        continue;
+      }
+
+      if (line.startsWith('}')) {
+        indentLevel = Math.max(indentLevel - 1, 0);
+      }
+
+      formatted.push(`${'  '.repeat(indentLevel)}${line}`);
+
+      if (line.endsWith('{')) {
+        indentLevel += 1;
+      }
+    }
+
+    return formatted.join('\n').trim();
   }
 
   currentHint(): string {
