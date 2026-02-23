@@ -4,11 +4,14 @@ Refactoring training platform: practice design patterns on small, messy code exa
 
 ## Quick start
 
-- **Docker**: `docker compose up --build` (app on port 8080, MySQL on 3306, Ollama on 11434)
+- **Docker**: `docker compose up --build` (app on port 80, MySQL on 3306, Ollama on 11434)
 - **Backend (after containers are up)**: from project root run  
   `docker compose exec app bash -c "cd /var/www/html/backend && bash scripts/deploy.sh"`  
   This installs dependencies, creates `.env` if missing, generates key, runs migrations and seeders, and prints LLM setup instructions.
 - **Frontend**: `cd web-client && npm install && npm start`
+- **Local hosts setup**:
+  - `refactorforge.test` -> `127.0.0.1` (frontend with `npm start` on port `4200`)
+  - `api.refactorforge.test` -> `127.0.0.1` (backend on port `80`)
 
 ## Ollama and DeepSeek-Coder-V2 Lite
 
